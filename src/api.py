@@ -1,19 +1,54 @@
+import os
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from database import obtener_conexion
 
 app = FastAPI(
-    title="API Monitor de Precios SaaS",
-    description="Endpoints para consultar productos monitoreados, lecturas historicas y alertas.",
+    title="Tarify API",
+    description="Endpoints para consultar productos monitoreados, lecturas históricas y alertas.",
     version="1.0.0"
 )
 
+# Esquema de validación para nuevos productos
+class NuevoProductoRequest(BaseModel):
+    name: str
+    target_url: str
+    category: str = "General"
+
+# Montar carpeta de archivos estáticos
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
+
 @app.get("/")
 def read_root():
-    return {
-        "status": "online",
-        "service": "Monitor de Precios SaaS API",
-        "version": "1.0.0"
-    }
+    return FileResponse("src/static/index.html")
+
+@app.post("/api/v1/products")
+def agregar_producto(producto: NuevoProductoRequest):
+    conexion = None
+    try:
+        conexion = obtener_conexion()
+        cursor = conexion.cursor()
+        
+        query = """
+            INSERT INTO monitored_products (name, target_url, category, is_active)
+            VALUES (%s, %s, %s, TRUE)
+            RETURNING id;
+        """
+        cursor.execute(query, (producto.name, producto.target_url, producto.category))
+        nuevo_id = cursor.fetchone()[0]
+        conexion.commit()
+        cursor.close()
+        
+        return {"status": "exito", "message": "Producto registrado correctamente", "id": nuevo_id}
+    except Exception as error:
+        if conexion:
+            conexion.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al registrar producto: {error}")
+    finally:
+        if conexion:
+            conexion.close()
 
 @app.get("/api/v1/products")
 def listar_productos():

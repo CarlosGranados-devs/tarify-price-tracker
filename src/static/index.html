@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarify - Dynamic Price Intelligence</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root[data-theme="light"] {
+            --bg-color: #e6ecf5;
+            --card-bg: #e6ecf5;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --shadow-dark: #b8c4d8;
+            --shadow-light: #ffffff;
+            --inset-dark: rgba(163, 177, 198, 0.6);
+            --inset-light: rgba(255, 255, 255, 0.8);
+            --accent-blue: #3B82F6;
+            --accent-hover: #2563EB;
+            --success-color: #10B981;
+            --border-radius: 18px;
+        }
+
+        :root[data-theme="dark"] {
+            --bg-color: #181a20;
+            --card-bg: #181a20;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --shadow-dark: #101115;
+            --shadow-light: #20232b;
+            --inset-dark: rgba(10, 11, 14, 0.8);
+            --inset-light: rgba(36, 39, 48, 0.5);
+            --accent-blue: #3B82F6;
+            --accent-hover: #60A5FA;
+            --success-color: #10B981;
+            --border-radius: 18px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* Neumorphic Utilities */
+        .neu-flat {
+            background: var(--card-bg);
+            box-shadow: 8px 8px 16px var(--shadow-dark), 
+                        -8px -8px 16px var(--shadow-light);
+            border-radius: var(--border-radius);
+        }
+
+        .neu-inset {
+            background: var(--card-bg);
+            box-shadow: inset 5px 5px 10px var(--inset-dark), 
+                        inset -5px -5px 10px var(--inset-light);
+            border-radius: 12px;
+            border: none;
+            outline: none;
+            color: var(--text-main);
+        }
+
+        .neu-btn {
+            background: var(--card-bg);
+            box-shadow: 6px 6px 12px var(--shadow-dark), 
+                        -6px -6px 12px var(--shadow-light);
+            border-radius: 12px;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .neu-btn:hover {
+            color: var(--accent-blue);
+        }
+
+        .neu-btn:active, .neu-btn.active {
+            box-shadow: inset 4px 4px 8px var(--inset-dark), 
+                        inset -4px -4px 8px var(--inset-light);
+            color: var(--accent-blue);
+        }
+
+        .neu-btn-primary {
+            background: var(--accent-blue);
+            color: #ffffff !important;
+            box-shadow: 5px 5px 12px var(--shadow-dark), 
+                        -5px -5px 12px var(--shadow-light);
+        }
+
+        .neu-btn-primary:active {
+            background: var(--accent-hover);
+        }
+
+        /* Sidebar Desktop Layout */
+        aside {
+            width: 260px;
+            padding: 2rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--accent-blue);
+            letter-spacing: -0.5px;
+        }
+
+        .nav-list {
+            list-style: none;
+            margin-top: 3rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        /* Main Content Workspace */
+        main {
+            margin-left: 260px;
+            flex: 1;
+            padding: 2rem 3rem;
+            max-width: 1400px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+            padding: 1.2rem 2rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--success-color);
+        }
+
+        .pulse-dot {
+            width: 9px;
+            height: 9px;
+            background-color: var(--success-color);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--success-color);
+        }
+
+        /* Grid Metrics & Sections */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .metric-card {
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .metric-icon {
+            width: 55px;
+            height: 55px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            color: var(--accent-blue);
+        }
+
+        .metric-data h3 {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-data .value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-top: 0.2rem;
+        }
+
+        /* Products Desktop Grid */
+        .products-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2rem;
+        }
+
+        .product-card {
+            padding: 1.8rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .product-card:hover {
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .product-tag {
+            align-self: flex-start;
+            padding: 0.3rem 0.8rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 20px;
+            color: var(--accent-blue);
+            margin-bottom: 1rem;
+        }
+
+        .product-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            line-height: 1.4;
+            margin-bottom: 1rem;
+        }
+
+        .price-container {
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .current-price {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--accent-blue);
+        }
+
+        /* Theme Toggle Switch */
+        .theme-toggle {
+            cursor: pointer;
+            width: 100%;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Navegación Desktop -->
+    <aside class="neu-flat">
+        <div>
+            <div class="brand">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Tarify</span>
+            </div>
+            
+            <ul class="nav-list">
+                <li>
+                    <button class="neu-btn active" style="width: 100%;">
+                        <i class="fa-solid fa-square-poll-vertical"></i> Dashboard
+                    </button>
+                </li>
+                <li>
+                    <button class="neu-btn" style="width: 100%;">
+                        <i class="fa-solid fa-box-archive"></i> Productos
+                    </button>
+                </li>
+                <li>
+                    <button class="neu-btn" style="width: 100%;">
+                        <i class="fa-solid fa-bell"></i> Alertas
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <button id="themeToggle" class="neu-btn theme-toggle">
+            <i class="fa-solid fa-moon"></i> Modo Oscuro
+        </button>
+    </aside>
+
+    <!-- Workspace Principal -->
+    <main>
+        <!-- Topbar -->
+        <div class="topbar neu-flat">
+            <div>
+                <h2>Intelligence Control Panel</h2>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Monitoreo automatizado en tiempo real</p>
+            </div>
+            <div class="status-badge neu-inset">
+                <span class="pulse-dot"></span> Scraper Service Online
+            </div>
+        </div>
+
+        <!-- Métricas Clave -->
+        <div class="metrics-grid">
+            <div class="metric-card neu-flat">
+                <div class="metric-icon neu-inset">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <div class="metric-data">
+                    <h3>Total Monitoreados</h3>
+                    <div id="count-products" class="value">0</div>
+                </div>
+            </div>
+
+            <div class="metric-card neu-flat">
+                <div class="metric-icon neu-inset">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <div class="metric-data">
+                    <h3>Alertas Disparadas</h3>
+                    <div id="count-alerts" class="value">0</div>
+                </div>
+            </div>
+
+            <div class="metric-card neu-flat">
+                <div class="metric-icon neu-inset">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+                <div class="metric-data">
+                    <h3>Frecuencia Rastreos</h3>
+                    <div class="value" style="font-size: 1.4rem; padding-top: 0.3rem;">Cada 1 min</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulario Neumórfico de Registro -->
+        <div class="neu-flat" style="padding: 1.8rem; margin-bottom: 2.5rem;">
+            <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">Rastrear Nuevo Producto</h3>
+            <form id="add-product-form" style="display: grid; grid-template-columns: 2fr 3fr 1.5fr 1fr; gap: 1rem;">
+                <input type="text" id="prod-name" placeholder="Nombre (ej. Libro Python)" class="neu-inset" required style="padding: 0.75rem 1rem;">
+                <input type="url" id="prod-url" placeholder="https://books.toscrape.com/..." class="neu-inset" required style="padding: 0.75rem 1rem;">
+                <input type="text" id="prod-category" placeholder="Categoría" class="neu-inset" style="padding: 0.75rem 1rem;">
+                <button type="submit" class="neu-btn neu-btn-primary" style="justify-content: center;">
+                    <i class="fa-solid fa-plus"></i> Añadir
+                </button>
+            </form>
+        </div>
+
+        <!-- Grid de Productos Monitoreados -->
+        <div class="products-header">
+            <h2>Catálogo Monitoreado</h2>
+        </div>
+
+        <div id="products-grid" class="products-grid">
+            <p style="color: var(--text-muted);">Cargando catálogo desde Tarify API...</p>
+        </div>
+    </main>
+
+    <script>
+        // Toggle Modo Claro / Oscuro
+        const themeToggleBtn = document.getElementById('themeToggle');
+        const htmlElement = document.documentElement;
+
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = htmlElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            htmlElement.setAttribute('data-theme', newTheme);
+            themeToggleBtn.innerHTML = newTheme === 'dark' 
+                ? '<i class="fa-solid fa-moon"></i> Modo Oscuro' 
+                : '<i class="fa-solid fa-sun"></i> Modo Claro';
+        });
+
+        // Consumo de API REST Tarify
+        async function fetchDashboardData() {
+            try {
+                const resProducts = await fetch('/api/v1/products');
+                const dataProducts = await resProducts.json();
+                
+                const resAlerts = await fetch('/api/v1/alerts');
+                const dataAlerts = await resAlerts.json();
+
+                document.getElementById('count-products').innerText = dataProducts.count || 0;
+                document.getElementById('count-alerts').innerText = dataAlerts.count || 0;
+
+                const grid = document.getElementById('products-grid');
+                grid.innerHTML = '';
+
+                if (dataProducts.data.length === 0) {
+                    grid.innerHTML = '<p style="color: var(--text-muted);">No hay productos registrados en el sistema.</p>';
+                    return;
+                }
+
+                dataProducts.data.forEach(prod => {
+                    const card = document.createElement('div');
+                    card.className = 'product-card neu-flat';
+                    card.innerHTML = `
+                        <div>
+                            <span class="product-tag neu-inset">${prod.category || 'General'}</span>
+                            <h3 class="product-title">${prod.name}</h3>
+                        </div>
+                        <div>
+                            <div class="price-container">
+                                <span class="current-price">$22.99</span>
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">USD</span>
+                            </div>
+                            <a href="${prod.target_url}" target="_blank" class="neu-btn neu-btn-primary" style="width: 100%; text-decoration: none; justify-content: center;">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> Ver Tienda
+                            </a>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error("Error conectando a la API de Tarify:", error);
+            }
+        }
+
+        // Listener del Formulario de Registro
+        document.getElementById('add-product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('prod-name').value;
+            const target_url = document.getElementById('prod-url').value;
+            const category = document.getElementById('prod-category').value || 'General';
+
+            try {
+                const res = await fetch('/api/v1/products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, target_url, category })
+                });
+
+                if (res.ok) {
+                    document.getElementById('add-product-form').reset();
+                    fetchDashboardData();
+                } else {
+                    alert('Error al registrar el producto.');
+                }
+            } catch (err) {
+                console.error("Error al enviar el producto:", err);
+            }
+        });
+
+        fetchDashboardData();
+    </script>
+</body>
+</html>
