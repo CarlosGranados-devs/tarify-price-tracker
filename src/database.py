@@ -100,3 +100,24 @@ def guardar_producto_y_precio(datos_producto: dict, url: str) -> bool:
     finally:
         if conexion:
             conexion.close()
+def obtener_productos_activos() -> list:
+    """
+    Retorna una lista de tuplas (id, target_url, name) con todos los productos activos a monitorear.
+    """
+    conexion = None
+    try:
+        conexion = obtener_conexion()
+        cursor = conexion.cursor()
+        
+        query = "SELECT id, target_url, name FROM monitored_products WHERE is_active = TRUE;"
+        cursor.execute(query)
+        productos = cursor.fetchall()
+        
+        cursor.close()
+        return productos
+    except Exception as error:
+        print(f"[ERROR BD] No se pudieron obtener los productos activos: {error}")
+        return []
+    finally:
+        if conexion:
+            conexion.close()
