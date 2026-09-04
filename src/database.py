@@ -1,4 +1,5 @@
 import os
+from notifications import enviar_alerta_email
 import psycopg2
 from dotenv import load_dotenv
 
@@ -70,9 +71,15 @@ def guardar_producto_y_precio(datos_producto: dict, url: str) -> bool:
                 """
                 cursor.execute(query_alerta, (product_id, precio_anterior, precio_nuevo, porcentaje_cambio))
                 print(f"[ALERTA] ¡Cambio de precio detectado! Anterior: {precio_anterior} -> Nuevo: {precio_nuevo} ({porcentaje_cambio:+.2f}%)")
-            else:
-                print(f"[INFO] El precio se mantiene sin cambios: {precio_nuevo}")
 
+                # Disparar notificacion de correo en segundo plano/sincrono
+                enviar_alerta_email(
+                    nombre_producto=datos_producto["titulo"],
+                    url=url,
+                    precio_anterior=precio_anterior,
+                    precio_nuevo=precio_nuevo,
+                    porcentaje=porcentaje_cambio
+                )
         # 3. Insertar el nuevo precio en price_logs
         query_log = """
             INSERT INTO price_logs (product_id, price, currency, is_available)
