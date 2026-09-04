@@ -8,13 +8,13 @@ def procesar_monitoreo():
     try:
         conexion = obtener_conexion()
         with conexion.cursor() as cursor:
-            # Obtener todos los productos activos
-            cursor.execute("SELECT id, name, target_url FROM monitored_products WHERE is_active = TRUE;")
+            # Obtener todos los productos activos con su target_price
+            cursor.execute("SELECT id, name, target_url, target_price FROM monitored_products WHERE is_active = TRUE;")
             productos = cursor.fetchall()
 
             print(f"\n--- [Scheduler] Iniciando ronda de raspado ({len(productos)} productos) ---")
 
-            for prod_id, nombre, url in productos:
+            for prod_id, nombre, url, target_price in productos:
                 resultado = extraer_precio_producto(url)
                 
                 precio_actual = None
@@ -41,13 +41,17 @@ def procesar_monitoreo():
                     VALUES (%s, %s);
                 """, (prod_id, precio_actual))
 
-                # Evaluar variación si existe un precio previo registrado
+                # Evaluar variación
                 if ultimo_registro is not None:
                     precio_anterior = float(ultimo_registro[0])
-                    
-                    if precio_actual < precio_anterior:
+                    t_price_float = float(target_price) if target_price is not None else None
+
+                    # Criterio: bajó de precio Y (no hay target OR el precio actual es <= target)
+                    cumple_target = (t_price_float is None) or (precio_actual <= t_price_float)
+
+                    if precio_actual < precio_anterior and cumple_target:
                         variacion_pct = ((precio_anterior - precio_actual) / precio_anterior) * 100
-                        print(f"  🔥 ¡DESCUENTO DETECTADO! '{nombre}': ${precio_anterior:.2f} -> ${precio_actual:.2f} (-{variacion_pct:.1f}%)")
+                        print(f"  🔥 ¡ALERTA DISPARADA! '{nombre}': ${precio_anterior:.2f} -> ${precio_actual:.2f} (-{variacion_pct:.1f}%)")
 
                         # Registrar en la tabla price_alerts
                         cursor.execute("""
@@ -55,10 +59,12 @@ def procesar_monitoreo():
                             VALUES (%s, %s, %s, %s);
                         """, (prod_id, precio_anterior, precio_actual, variacion_pct))
 
-                        # Disparar alertas por Telegram y Email
+                        # Disparar alertas
                         enviar_alerta_telegram(nombre, precio_anterior, precio_actual, url)
                         enviar_alerta_email(nombre, precio_anterior, precio_actual, url)
 
+                    elif precio_actual < precio_anterior:
+                        print(f"  📉 Bajó a ${precio_actual:.2f} pero aún no alcanza el Target (${t_price_float:.2f})")
                     elif precio_actual > precio_anterior:
                         print(f"  📈 Subida de precio en '{nombre}': ${precio_anterior:.2f} -> ${precio_actual:.2f}")
                     else:
@@ -78,7 +84,6 @@ def procesar_monitoreo():
             conexion.close()
 
 if __name__ == "__main__":
-    # Bucle infinito para ejecutar cada 60 segundos
     while True:
         procesar_monitoreo()
         time.sleep(60)

@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tarify - Dynamic Price Intelligence</title>
+    <!-- Favicon SVG Neumórfico Integrado -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%23181a20'/><path d='M25 68 L45 48 L60 60 L80 32' stroke='%233B82F6' stroke-width='9' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='80' cy='32' r='6' fill='%233B82F6'/></svg>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root[data-theme="light"] {
@@ -83,6 +85,7 @@
             display: inline-flex;
             align-items: center;
             gap: 0.6rem;
+            text-decoration: none;
         }
 
         .neu-btn:hover { color: var(--accent-blue); }
@@ -196,7 +199,7 @@
 
         .products-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
             gap: 2rem;
         }
 
@@ -213,33 +216,37 @@
             transform: scale(0.9) translateY(20px);
         }
 
-        /* Badge neumórfico dinámico de categoría */
         .product-tag {
             padding: 0.35rem 0.85rem;
             font-size: 0.78rem;
             font-weight: 700;
             border-radius: 20px;
-            letter-spacing: 0.3px;
         }
 
         .product-title {
             font-size: 1.15rem;
             font-weight: 700;
             line-height: 1.4;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
         }
 
         .price-container {
             display: flex;
             align-items: baseline;
             gap: 0.5rem;
-            margin: 1rem 0;
+            margin: 0.8rem 0;
         }
 
         .current-price {
             font-size: 2rem;
             font-weight: 800;
             color: var(--accent-blue);
+        }
+
+        .sparkline-container {
+            width: 100%;
+            height: 45px;
+            margin: 0.8rem 0;
         }
 
         table {
@@ -302,14 +309,11 @@
         }
 
         .modal-icon-bg {
-            width: 50px;
-            height: 50px;
+            width: 50px; height: 50px;
             border-radius: 50%;
             background: rgba(239, 68, 68, 0.15);
             color: var(--danger-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             font-size: 1.2rem;
             margin-bottom: 1.2rem;
         }
@@ -328,10 +332,6 @@
         .btn-danger {
             background: #ef4444 !important;
             color: white !important;
-        }
-
-        .btn-danger:hover {
-            background: #dc2626 !important;
         }
     </style>
 </head>
@@ -404,10 +404,11 @@
         <div id="sec-dashboard" class="view-section active">
             <div class="neu-flat" style="padding: 1.8rem; margin-bottom: 2.5rem;">
                 <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">Rastrear Nuevo Producto</h3>
-                <form id="add-product-form" style="display: grid; grid-template-columns: 2fr 3fr 1.5fr 1fr; gap: 1rem;">
+                <form id="add-product-form" style="display: grid; grid-template-columns: 2fr 2.5fr 1.2fr 1.2fr 1fr; gap: 1rem;">
                     <input type="text" id="prod-name" placeholder="Nombre producto" class="neu-inset" required style="padding: 0.75rem 1rem;">
                     <input type="url" id="prod-url" placeholder="https://..." class="neu-inset" required style="padding: 0.75rem 1rem;">
-                    <input type="text" id="prod-category" placeholder="Categoría (ej. Videojuegos, Libros)" class="neu-inset" style="padding: 0.75rem 1rem;">
+                    <input type="text" id="prod-category" placeholder="Categoría" class="neu-inset" style="padding: 0.75rem 1rem;">
+                    <input type="number" step="0.01" id="prod-target" placeholder="Target ($)" class="neu-inset" style="padding: 0.75rem 1rem;">
                     <button type="submit" id="btn-submit" class="neu-btn neu-btn-primary" style="justify-content: center;">
                         <i class="fa-solid fa-plus"></i> Añadir
                     </button>
@@ -418,9 +419,20 @@
             <div id="products-grid" class="products-grid"></div>
         </div>
 
-        <!-- SECCION: ALERTAS -->
+        <!-- SECCION: ALERTAS & EXPORTACIÓN -->
         <div id="sec-alerts" class="view-section">
-            <h2 style="margin-bottom: 1.5rem;">Historial de Alertas de Precio</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2>Historial de Alertas de Precio</h2>
+                <div style="display: flex; gap: 1rem;">
+                    <a href="/api/v1/export/csv" class="neu-btn" style="color: #10B981;">
+                        <i class="fa-solid fa-file-csv"></i> Exportar CSV
+                    </a>
+                    <a href="/api/v1/export/json" class="neu-btn" style="color: #3B82F6;">
+                        <i class="fa-solid fa-code"></i> Exportar JSON
+                    </a>
+                </div>
+            </div>
+
             <div class="neu-flat" style="padding: 1.5rem;">
                 <table>
                     <thead>
@@ -443,12 +455,10 @@
     <!-- Modal Neumórfico Personalizado -->
     <div id="delete-modal" class="modal-overlay">
         <div class="modal-card neu-flat">
-            <div class="modal-icon-bg">
-                <i class="fa-solid fa-trash-can"></i>
-            </div>
+            <div class="modal-icon-bg"><i class="fa-solid fa-trash-can"></i></div>
             <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem;">Eliminar producto</h3>
             <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.5;">
-                Se dejará de monitorear "<span id="modal-product-name" style="color: var(--text-main); font-weight: 600;"></span>". Esta acción no se puede deshacer.
+                Se dejará de monitorear "<span id="modal-product-name" style="color: var(--text-main); font-weight: 600;"></span>".
             </p>
             <div class="modal-actions">
                 <button id="btn-cancel-delete" class="neu-btn">Cancelar</button>
@@ -460,37 +470,45 @@
     <script>
         let selectedProductId = null;
 
-        // Mapeador Inteligente de Colores por Categoría
         function getCategoryColor(category) {
             if (!category) return '#3B82F6';
             const cat = category.toLowerCase().trim();
-
-            if (cat.includes('videojuego') || cat.includes('juego') || cat.includes('gaming') || cat.includes('console')) {
-                return '#6366F1'; // Indigo / Violeta para Juegos
-            }
-            if (cat.includes('libro') || cat.includes('book') || cat.includes('manga') || cat.includes('comic')) {
-                return '#0FA968'; // Esmeralda / Verde para Libros
-            }
-            if (cat.includes('tech') || cat.includes('hardware') || cat.includes('laptop') || cat.includes('pc')) {
-                return '#3B82F6'; // Azul Eléctrico para Tech
-            }
-            if (cat.includes('ropa') || cat.includes('moda') || cat.includes('apparel') || cat.includes('calzado')) {
-                return '#EF4444'; // Rojo Coral para Moda
-            }
-            if (cat.includes('hogar') || cat.includes('casa') || cat.includes('mueble')) {
-                return '#F59E0B'; // Ámbar para Hogar
-            }
-
-            // Generador de color consistente si es una categoría personalizada
+            if (cat.includes('videojuego') || cat.includes('juego') || cat.includes('gaming')) return '#6366F1';
+            if (cat.includes('libro') || cat.includes('book') || cat.includes('manga')) return '#0FA968';
+            if (cat.includes('tech') || cat.includes('hardware') || cat.includes('laptop')) return '#3B82F6';
+            if (cat.includes('ropa') || cat.includes('moda') || cat.includes('calzado')) return '#EF4444';
+            if (cat.includes('hogar') || cat.includes('mueble')) return '#F59E0B';
+            
             let hash = 0;
-            for (let i = 0; i < cat.length; i++) {
-                hash = cat.charCodeAt(i) + ((hash << 5) - hash);
-            }
+            for (let i = 0; i < cat.length; i++) hash = cat.charCodeAt(i) + ((hash << 5) - hash);
             const colors = ['#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#06B6D4'];
             return colors[Math.abs(hash) % colors.length];
         }
 
-        // Cambios de Pestaña
+        function renderSparkline(history, strokeColor) {
+            if (!history || history.length < 2) {
+                return `<div style="color: var(--text-muted); font-size: 0.75rem; text-align: center; padding-top: 12px;">Esperando más lecturas...</div>`;
+            }
+
+            const width = 280;
+            const height = 40;
+            const min = Math.min(...history);
+            const max = Math.max(...history);
+            const range = (max - min) === 0 ? 1 : (max - min);
+
+            const points = history.map((val, index) => {
+                const x = (index / (history.length - 1)) * width;
+                const y = height - ((val - min) / range) * (height - 8) - 4;
+                return `${x},${y}`;
+            }).join(' ');
+
+            return `
+                <svg width="100%" height="100%" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+                    <polyline fill="none" stroke="${strokeColor}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${points}" />
+                </svg>
+            `;
+        }
+
         document.querySelectorAll('.nav-link').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
@@ -500,7 +518,6 @@
             });
         });
 
-        // Theme Toggle
         const themeToggleBtn = document.getElementById('themeToggle');
         themeToggleBtn.addEventListener('click', () => {
             const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -511,7 +528,6 @@
                 : '<i class="fa-solid fa-sun"></i> Modo Claro';
         });
 
-        // Cargar Datos del Dashboard
         async function fetchDashboardData() {
             try {
                 const resProducts = await fetch('/api/v1/products');
@@ -538,6 +554,8 @@
 
                     const catName = prod.category || 'General';
                     const catColor = getCategoryColor(catName);
+                    const sparklineSvg = renderSparkline(prod.price_history, catColor);
+                    const targetStr = prod.target_price ? `$${Number(prod.target_price).toFixed(2)}` : 'Sin fijar';
 
                     const card = document.createElement('div');
                     card.className = 'product-card neu-flat';
@@ -559,7 +577,17 @@
                                 <span class="current-price">${priceVal}</span>
                                 <span style="color: var(--text-muted); font-size: 0.85rem;">USD</span>
                             </div>
-                            <a href="${prod.target_url}" target="_blank" class="neu-btn neu-btn-primary" style="width: 100%; text-decoration: none; justify-content: center;">
+                            
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem;">
+                                <span>Tendencia reciente:</span>
+                                <span>Target: <strong style="color: var(--accent-blue);">${targetStr}</strong></span>
+                            </div>
+
+                            <div class="sparkline-container neu-inset" style="padding: 4px 10px; display: flex; align-items: center;">
+                                ${sparklineSvg}
+                            </div>
+
+                            <a href="${prod.target_url}" target="_blank" class="neu-btn neu-btn-primary" style="width: 100%; text-decoration: none; justify-content: center; margin-top: 0.8rem;">
                                 <i class="fa-solid fa-arrow-up-right-from-square"></i> Ver Tienda
                             </a>
                         </div>
@@ -588,7 +616,6 @@
             }
         }
 
-        // Modal de Eliminación
         const modal = document.getElementById('delete-modal');
         const modalProdName = document.getElementById('modal-product-name');
 
@@ -605,21 +632,13 @@
 
         document.getElementById('btn-confirm-delete').addEventListener('click', async () => {
             if (!selectedProductId) return;
-            
             const card = document.getElementById(`card-${selectedProductId}`);
             modal.classList.remove('active');
-
-            if (card) {
-                card.classList.add('removing');
-            }
+            if (card) card.classList.add('removing');
 
             try {
                 const res = await fetch(`/api/v1/products/${selectedProductId}`, { method: 'DELETE' });
-                if (res.ok) {
-                    setTimeout(() => {
-                        fetchDashboardData();
-                    }, 400);
-                }
+                if (res.ok) setTimeout(() => fetchDashboardData(), 400);
             } catch (err) {
                 console.error("Error al eliminar:", err);
             } finally {
@@ -627,22 +646,23 @@
             }
         });
 
-        // Registro de Producto
         document.getElementById('add-product-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btnSubmit = document.getElementById('btn-submit');
             const name = document.getElementById('prod-name').value;
             const target_url = document.getElementById('prod-url').value;
             const category = document.getElementById('prod-category').value || 'General';
+            const target_price_raw = document.getElementById('prod-target').value;
+            const target_price = target_price_raw ? parseFloat(target_price_raw) : null;
 
             btnSubmit.disabled = true;
-            btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Rastreando...';
+            btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
 
             try {
                 const res = await fetch('/api/v1/products', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, target_url, category })
+                    body: JSON.stringify({ name, target_url, category, target_price })
                 });
 
                 if (res.ok) {
