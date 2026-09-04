@@ -2,7 +2,6 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
-# Cabeceras completas para simular una navegación real
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -32,7 +31,7 @@ def extraer_precio_producto(url: str):
         titulo = None
         
         # Meta etiquetas universales OpenGraph / Twitter Cards
-        og_title = soup.find('meta', property='og:title') or soup.find('meta', name='twitter:title')
+        og_title = soup.find('meta', property='og:title') or soup.find('meta', attrs={'name': 'twitter:title'})
         if og_title and og_title.get('content'):
             titulo = og_title['content'].strip()
             
@@ -56,7 +55,7 @@ def extraer_precio_producto(url: str):
         meta_price = (
             soup.find('meta', property='product:price:amount') or
             soup.find('meta', property='og:price:amount') or
-            soup.find('meta', itemprop='price')
+            soup.find('meta', attrs={'itemprop': 'price'})
         )
         if meta_price and meta_price.get('content'):
             try:
@@ -64,9 +63,16 @@ def extraer_precio_producto(url: str):
             except ValueError:
                 pass
 
-        # Estrategia B: Amazon / Retailers Complejos
+        # Estrategia B: Books to Scrape (Selector específico)
+        if precio is None and "books.toscrape.com" in url.lower():
+            price_node = soup.find('p', class_='price_color')
+            if price_node:
+                match = re.search(r'[\d\.]+', price_node.text)
+                if match:
+                    precio = float(match.group())
+
+        # Estrategia C: Amazon / Retailers Complejos
         if precio is None and "amazon" in url.lower():
-            # Intentar capturar precio flotante de Amazon
             price_offscreen = soup.find('span', class_='a-offscreen')
             if price_offscreen:
                 match = re.search(r'[\d\.\,]+', price_offscreen.text)
@@ -87,12 +93,10 @@ def extraer_precio_producto(url: str):
                     except ValueError:
                         pass
 
-        # Estrategia C: Selectores Genéricos de E-Commerce (Clases / IDs con "price")
+        # Estrategia D: Selectores Genéricos de E-Commerce (Clases o IDs con "price")
         if precio is None:
-            # Buscar elementos que tengan clases o ids como 'price', 'precio', 'amount'
             elementos_precio = soup.find_all(['span', 'div', 'p', 'b'], class_=re.compile(r'price|precio|amount|val', re.I))
             for elem in elementos_precio:
-                # Extraer números que coincidan con formato monetario
                 match = re.search(r'\$\s*([\d\.\,]+)', elem.text)
                 if match:
                     try:
@@ -103,7 +107,7 @@ def extraer_precio_producto(url: str):
                     except ValueError:
                         continue
 
-        # Estrategia D: Expresión regular sobre todo el texto para capturar patrones de precio ($XX.XX)
+        # Estrategia E: Regex directo sobre la respuesta HTML
         if precio is None:
             matches = re.findall(r'\$\s*(\d+\.\d{2})', respuesta.text)
             if matches:
