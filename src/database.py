@@ -1,25 +1,18 @@
 import os
-from notifications import enviar_alerta_email
 import psycopg2
 from dotenv import load_dotenv
+from notifications import enviar_alerta_telegram, enviar_alerta_email
 
 load_dotenv()
 
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "monitor_db")
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "postgrespassword")
-
 def obtener_conexion():
     return psycopg2.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD
+        host=os.getenv("DB_HOST", "localhost"),
+        database=os.getenv("DB_NAME", "monitor_db"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD", "postgrespassword"),
+        port=os.getenv("DB_PORT", "5432")
     )
-
 def guardar_producto_y_precio(datos_producto: dict, url: str) -> bool:
     if not datos_producto:
         return False

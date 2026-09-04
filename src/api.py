@@ -13,7 +13,7 @@ from scraper import extraer_precio_producto
 app = FastAPI(
     title="Tarify API",
     description="Endpoints para consultar productos monitoreados, lecturas históricas, alertas y exportaciones.",
-    version="1.2.0"
+    version="1.3.0"
 )
 
 class NuevoProductoRequest(BaseModel):
@@ -26,7 +26,10 @@ app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 @app.get("/")
 def read_root():
-    return FileResponse("src/static/index.html")
+    return FileResponse(
+        "src/static/index.html",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
 
 @app.post("/api/v1/products")
 def agregar_producto(producto: NuevoProductoRequest):
@@ -90,6 +93,7 @@ def listar_productos():
                         LIMIT 1
                     ) AS last_price
                 FROM monitored_products p
+                WHERE p.is_active = TRUE
                 ORDER BY p.id DESC;
             """
             cursor.execute(query)
@@ -140,6 +144,7 @@ def listar_alertas():
                     a.triggered_at
                 FROM price_alerts a
                 JOIN monitored_products p ON a.product_id = p.id
+                WHERE p.is_active = TRUE
                 ORDER BY a.triggered_at DESC;
             """
             cursor.execute(query)
@@ -169,6 +174,7 @@ def eliminar_producto(product_id: int):
     try:
         conexion = obtener_conexion()
         with conexion.cursor() as cursor:
+            # Eliminar registros relacionados primero para evitar huérfanos
             cursor.execute("DELETE FROM price_logs WHERE product_id = %s;", (product_id,))
             cursor.execute("DELETE FROM price_alerts WHERE product_id = %s;", (product_id,))
             cursor.execute("DELETE FROM monitored_products WHERE id = %s;", (product_id,))
@@ -183,7 +189,7 @@ def eliminar_producto(product_id: int):
             conexion.close()
 
 # ---------------------------------------------------------
-# ENDPOINTS DE EXPORTACIÓN (CSV / JSON)
+# EXPORTACIONES FILTRADAS: SOLO PRODUCTOS ACTIVOS Y SU ÚLTIMO REGISTRO
 # ---------------------------------------------------------
 
 @app.get("/api/v1/export/csv")
@@ -192,15 +198,17 @@ def exportar_csv():
     try:
         conexion = obtener_conexion()
         with conexion.cursor() as cursor:
+            # Trae ÚNICAMENTE el último precio registrado de cada producto ACTIVO
             query = """
-                SELECT 
+                SELECT DISTINCT ON (p.id)
                     p.name AS producto,
                     p.category AS categoria,
                     pl.price AS precio_usd,
                     pl.scraped_at AS fecha_registro
-                FROM price_logs pl
-                JOIN monitored_products p ON pl.product_id = p.id
-                ORDER BY pl.scraped_at DESC;
+                FROM monitored_products p
+                JOIN price_logs pl ON pl.product_id = p.id
+                WHERE p.is_active = TRUE
+                ORDER BY p.id, pl.scraped_at DESC;
             """
             cursor.execute(query)
             filas = cursor.fetchall()
@@ -216,7 +224,7 @@ def exportar_csv():
         return StreamingResponse(
             io.BytesIO(output.getvalue().encode('utf-8')),
             media_type="text/csv",
-            headers={"Content-Disposition": "attachment; filename=tarify_price_history.csv"}
+            headers={"Content-Disposition": "attachment; filename=tarify_catalogo_activo.csv"}
         )
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Error al exportar CSV: {error}")
@@ -230,15 +238,17 @@ def exportar_json():
     try:
         conexion = obtener_conexion()
         with conexion.cursor() as cursor:
+            # Trae ÚNICAMENTE el último precio registrado de cada producto ACTIVO
             query = """
-                SELECT 
+                SELECT DISTINCT ON (p.id)
                     p.name AS producto,
                     p.category AS categoria,
                     pl.price AS precio_usd,
                     pl.scraped_at AS fecha_registro
-                FROM price_logs pl
-                JOIN monitored_products p ON pl.product_id = p.id
-                ORDER BY pl.scraped_at DESC;
+                FROM monitored_products p
+                JOIN price_logs pl ON pl.product_id = p.id
+                WHERE p.is_active = TRUE
+                ORDER BY p.id, pl.scraped_at DESC;
             """
             cursor.execute(query)
             filas = cursor.fetchall()
@@ -256,7 +266,7 @@ def exportar_json():
         return Response(
             content=contenido_json,
             media_type="application/json",
-            headers={"Content-Disposition": "attachment; filename=tarify_price_history.json"}
+            headers={"Content-Disposition": "attachment; filename=tarify_catalogo_activo.json"}
         )
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Error al exportar JSON: {error}")
