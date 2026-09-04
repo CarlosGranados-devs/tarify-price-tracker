@@ -11,6 +11,8 @@ services:
     plan: free
     region: ohio
     envVars:
+      - key: PYTHONPATH
+        value: "src"
       - key: DB_HOST
         fromDatabase:
           name: tarify-db
