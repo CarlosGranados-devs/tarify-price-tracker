@@ -1,0 +1,31 @@
+databases:
+  - name: tarify-db
+    databaseName: tarify_db
+    user: tarify_user
+    plan: free
+
+services:
+  - type: web
+    name: tarify-api
+    env: docker
+    plan: free
+    region: ohio
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: tarify-db
+          property: host
+      - key: DB_NAME
+        fromDatabase:
+          name: tarify-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: tarify-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: tarify-db
+          property: password
+      - key: DB_PORT
+        value: "5432"
