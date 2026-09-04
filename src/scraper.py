@@ -49,7 +49,7 @@ def extraer_precio_producto(url: str) -> dict:
         return None
 
 
-# --- Bloque de integración ---
+# --- Bloque de ejecución ---
 if __name__ == "__main__":
     from database import guardar_producto_y_precio
 

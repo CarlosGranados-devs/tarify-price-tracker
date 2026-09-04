@@ -2,10 +2,8 @@ import os
 import psycopg2
 from dotenv import load_dotenv
 
-# Cargamos las variables del archivo .env si existe
 load_dotenv()
 
-# Configuración de conexión (usamos valores por defecto si no existen en .env)
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "monitor_db")
@@ -13,9 +11,6 @@ DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "postgrespassword")
 
 def obtener_conexion():
-    """
-    Establece y retorna una conexión con la base de datos PostgreSQL.
-    """
     return psycopg2.connect(
         host=DB_HOST,
         port=DB_PORT,
@@ -25,9 +20,6 @@ def obtener_conexion():
     )
 
 def guardar_producto_y_precio(datos_producto: dict, url: str) -> bool:
-    """
-    Inserta o recupera un producto en 'monitored_products' y guarda su lectura actual en 'price_logs'.
-    """
     if not datos_producto:
         return False
 
@@ -36,7 +28,7 @@ def guardar_producto_y_precio(datos_producto: dict, url: str) -> bool:
         conexion = obtener_conexion()
         cursor = conexion.cursor()
 
-        # 1. Verificar si el producto ya existe o insertarlo
+        # 1. Insertar o recuperar el producto en monitored_products
         query_producto = """
             INSERT INTO monitored_products (name, target_url, category)
             VALUES (%s, %s, %s)
@@ -49,33 +41,60 @@ def guardar_producto_y_precio(datos_producto: dict, url: str) -> bool:
         if resultado:
             product_id = resultado[0]
         else:
-            # Si ya existía, consultamos su ID
             cursor.execute("SELECT id FROM monitored_products WHERE target_url = %s;", (url,))
             product_id = cursor.fetchone()[0]
 
-        # 2. Insertar la lectura actual de precio en price_logs
+        # 2. Consultar el último precio registrado en price_logs para detectar variaciones
+        query_ultimo_precio = """
+            SELECT price FROM price_logs 
+            WHERE product_id = %s 
+            ORDER BY scraped_at DESC 
+            LIMIT 1;
+        """
+        cursor.execute(query_ultimo_precio, (product_id,))
+        ultimo_registro = cursor.fetchone()
+
+        precio_nuevo = datos_producto["precio"]
+
+        if ultimo_registro:
+            precio_anterior = float(ultimo_registro[0])
+            
+            # Si el precio cambió, generamos una alerta
+            if precio_anterior != precio_nuevo:
+                diferencia = precio_nuevo - precio_anterior
+                porcentaje_cambio = (diferencia / precio_anterior) * 100
+
+                query_alerta = """
+                    INSERT INTO price_alerts (product_id, previous_price, new_price, percentage_change)
+                    VALUES (%s, %s, %s, %s);
+                """
+                cursor.execute(query_alerta, (product_id, precio_anterior, precio_nuevo, porcentaje_cambio))
+                print(f"[ALERTA] ¡Cambio de precio detectado! Anterior: {precio_anterior} -> Nuevo: {precio_nuevo} ({porcentaje_cambio:+.2f}%)")
+            else:
+                print(f"[INFO] El precio se mantiene sin cambios: {precio_nuevo}")
+
+        # 3. Insertar el nuevo precio en price_logs
         query_log = """
             INSERT INTO price_logs (product_id, price, currency, is_available)
             VALUES (%s, %s, %s, %s);
         """
         cursor.execute(query_log, (
             product_id,
-            datos_producto["precio"],
+            precio_nuevo,
             datos_producto["moneda"],
             datos_producto["disponible"]
         ))
 
-        # Guardar los cambios permanentemente en la BD
         conexion.commit()
-        print(f"[EXITO] Guardado en BD: '{datos_producto['titulo']}' - {datos_producto['moneda']} {datos_producto['precio']} (ID Producto: {product_id})")
+        print(f"[EXITO] Registro actualizado en BD (ID Producto: {product_id})")
         
         cursor.close()
         return True
 
     except Exception as error:
         if conexion:
-            conexion.rollback()  # Deshace cambios si ocurre un error
-        print(f"[ERROR BD] No se pudo guardar el registro: {error}")
+            conexion.rollback()
+        print(f"[ERROR BD] No se pudo procesar la transacción: {error}")
         return False
 
     finally:
